@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
-# Автоматическая установка и запуск Закоулки
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-# Проверка программ
 command -v python3 >/dev/null 2>&1 || { echo "Установите Python 3.11+ с python.org"; exit 1; }
 command -v node >/dev/null 2>&1 || { echo "Установите Node.js LTS с nodejs.org"; exit 1; }
-command -v npm >/dev/null 2>&1 || { echo "npm не найден (устанавливается вместе с Node.js)"; exit 1; }
+command -v npm >/dev/null 2>&1 || { echo "npm не найден"; exit 1; }
 
-# Backend
 cd backend
 if [ ! -d venv ]; then python3 -m venv venv; fi
 source venv/bin/activate
@@ -20,18 +17,21 @@ if [ ! -f .env ]; then
   sed -i 's|^DATABASE_URL=.*|DATABASE_URL=sqlite:///./zakoulki.db|' .env
 fi
 
-alembic upgrade head >/dev/null 2>&1 || alembic upgrade head
+# Миграции: PostgreSQL — alembic, иначе create_all
+DB_URL=$(grep '^DATABASE_URL=' .env | cut -d= -f2-)
+if echo "$DB_URL" | grep -q '^postgresql'; then
+  alembic upgrade head
+else
+  python -c "from app.db.base import Base; from app.db.session import engine; Base.metadata.create_all(bind=engine); print('DB tables created')"
+fi
+
 python -m app.db.seed_accounts 2>/dev/null || true
 
-# Frontend
 cd ../frontend
 if [ ! -d node_modules ]; then npm install --silent; fi
-if [ ! -f .env.local ]; then
-  echo "NEXT_PUBLIC_YANDEX_MAPS_API_KEY=" > .env.local
-fi
+if [ ! -f .env.local ]; then echo "NEXT_PUBLIC_YANDEX_MAPS_API_KEY=" > .env.local; fi
 npm run build --silent 2>/dev/null || npm run build
 
-# Запуск
 cd "$ROOT"
 echo "Запуск backend..."
 cd backend && source venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000 &
