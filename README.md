@@ -18,19 +18,25 @@
 ### Linux / macOS
 ```bash
 chmod +x install.sh
-./install.sh
+./install.sh                          # SQLite (по умолчанию)
+./install.sh --db postgres            # PostgreSQL
+./install.sh --db mysql --mysql-url "mysql+pymysql://root:pass@127.0.0.1:3306/zakoulki?charset=utf8mb4"
+./install.sh --port 3002 --no-run     # другой порт, без запуска
 ```
 
 ### Windows (PowerShell)
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-.\install.ps1
+.\install.ps1                                    # SQLite
+.\install.ps1 -Db postgres                       # PostgreSQL
+.\install.ps1 -Db mysql -MysqlUrl "mysql+pymysql://root:pass@127.0.0.1:3306/zakoulki?charset=utf8mb4"
+.\install.ps1 -Port 3002 -NoRun
 ```
 
 После запуска скрипт сам:
 - создаст виртуальное окружение Python и установит зависимости
-- создаст файл .env (SQLite по умолчанию)
-- прогонит миграции БД
+- создаст файл .env (SQLite по умолчанию, или выбранная БД)
+- прогонит миграции БД (alembic для PostgreSQL, create_all для SQLite/MySQL)
 - создаст тестовые аккаунты
 - установит npm-зависимости и соберёт фронтенд
 - запустит backend (порт 8000) и frontend (порт 3001)
