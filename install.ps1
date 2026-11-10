@@ -3,6 +3,8 @@ param(
   [string]$MysqlUrl = "mysql+pymysql://root:@127.0.0.1:3306/zakoulki?charset=utf8mb4",
   [int]$Port = 3001,
   [int]$BackendPort = 8000,
+  [string]$Domain = "",
+  [switch]$Tunnel,
   [switch]$NoRun
 )
 $ErrorActionPreference = "Stop"
@@ -48,6 +50,19 @@ if (-not $NoRun) {
   $env:PORT = $Port
   Start-Process -NoNewWindow -FilePath "npm" -ArgumentList "start"
   Start-Sleep -Seconds 5
-  Write-Host "Готово! Откройте http://127.0.0.1:$Port"
+
+  if ($Tunnel) {
+    if ($Domain) {
+      Write-Host "Запуск serveo-туннеля для домена $Domain..."
+      Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList "-o","StrictHostKeyChecking=no","-R","${Domain}:80:localhost:$Port","serveo.net"
+      (Get-Content "$root\backend\.env") -replace '^SITE_URL=.*', "SITE_URL=https://${Domain}.serveo.net" | Set-Content "$root\backend\.env"
+      (Get-Content "$root\backend\.env") -replace '^API_URL=.*', "API_URL=https://${Domain}.serveo.net" | Set-Content "$root\backend\.env"
+    } else {
+      Write-Host "Запуск serveo-туннеля (случайный поддомен)..."
+      Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList "-o","StrictHostKeyChecking=no","-R","80:localhost:$Port","serveo.net"
+    }
+  }
+
+  Write-Host "Готово! Локально: http://127.0.0.1:$Port"
   Write-Host "Тестовый пользователь: test@test.ru / test1234 (admin)"
 }

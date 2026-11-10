@@ -18,18 +18,22 @@
 ### Linux / macOS
 ```bash
 chmod +x install.sh
-./install.sh                          # SQLite (по умолчанию)
-./install.sh --db postgres            # PostgreSQL
+./install.sh                                    # локально, SQLite
+./install.sh --db postgres                      # PostgreSQL
 ./install.sh --db mysql --mysql-url "mysql+pymysql://root:pass@127.0.0.1:3306/zakoulki?charset=utf8mb4"
-./install.sh --port 3002 --no-run     # другой порт, без запуска
+./install.sh --domain zakoulki-test              # локально + serveo-туннель с доменом
+./install.sh --tunnel                           # локально + serveo (случайный поддомен)
+./install.sh --port 3002 --no-run                # другой порт, без запуска
 ```
 
 ### Windows (PowerShell)
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-.\install.ps1                                    # SQLite
+.\install.ps1                                    # локально, SQLite
 .\install.ps1 -Db postgres                       # PostgreSQL
 .\install.ps1 -Db mysql -MysqlUrl "mysql+pymysql://root:pass@127.0.0.1:3306/zakoulki?charset=utf8mb4"
+.\install.ps1 -Domain zakoulki-test               # локально + serveo-туннель
+.\install.ps1 -Tunnel                            # локально + serveo (случайный поддомен)
 .\install.ps1 -Port 3002 -NoRun
 ```
 
@@ -40,6 +44,7 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 - создаст тестовые аккаунты
 - установит npm-зависимости и соберёт фронтенд
 - запустит backend (порт 8000) и frontend (порт 3001)
+- (опционально) запустит serveo-туннель и обновит SITE_URL/API_URL
 
 Откройте в браузере: http://127.0.0.1:3001
 

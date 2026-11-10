@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Автоматическая установка и запуск Закоулки
-# Опции: --db sqlite|postgres|mysql --mysql-url URL --port 3001 --backend-port 8000 --no-run
+# Опции: --db sqlite|postgres|mysql --mysql-url URL --port 3001 --backend-port 8000
+#        --domain NAME (serveo поддомен) --tunnel (включить serveo) --no-run
 set -e
 DB="sqlite"
 MYSQL_URL=""
 FRONT_PORT="3001"
 BACK_PORT="8000"
+DOMAIN=""
+TUNNEL=0
 RUN=1
 
 while [[ $# -gt 0 ]]; do
@@ -14,6 +17,8 @@ while [[ $# -gt 0 ]]; do
     --mysql-url) MYSQL_URL="$2"; shift 2;;
     --port) FRONT_PORT="$2"; shift 2;;
     --backend-port) BACK_PORT="$2"; shift 2;;
+    --domain) DOMAIN="$2"; TUNNEL=1; shift 2;;
+    --tunnel) TUNNEL=1; shift;;
     --no-run) RUN=0; shift;;
     *) echo "Неизвестная опция: $1"; exit 1;;
   esac
@@ -35,7 +40,7 @@ cd backend
 source venv/bin/activate
 pip install -q -r requirements.txt
 
-if [ ! -f .env ]; then cp .env.example .env; fi
+[ -f .env ] || cp .env.example .env
 
 case "$DB" in
   sqlite) DB_URL="sqlite:///./zakoulki.db";;
@@ -67,7 +72,23 @@ if [ "$RUN" = "1" ]; then
   PORT="$FRONT_PORT" npm start &
   FRONTEND_PID=$!
   sleep 4
-  echo "Готово! Откройте http://127.0.0.1:$FRONT_PORT"
+
+  if [ "$TUNNEL" = "1" ]; then
+    if [ -n "$DOMAIN" ]; then
+      echo "Запуск serveo-туннеля для домена $DOMAIN..."
+      ssh -o StrictHostKeyChecking=no -R "$DOMAIN:80:localhost:$FRONT_PORT" serveo.net &
+      TUNNEL_PID=$!
+      sed -i "s|^SITE_URL=.*|SITE_URL=https://$DOMAIN.serveo.net|" backend/.env 2>/dev/null || true
+      sed -i "s|^API_URL=.*|API_URL=https://$DOMAIN.serveo.net|" backend/.env 2>/dev/null || true
+    else
+      echo "Запуск serveo-туннеля (случайный поддомен)..."
+      ssh -o StrictHostKeyChecking=no -R "80:localhost:$FRONT_PORT" serveo.net &
+      TUNNEL_PID=$!
+    fi
+    echo "Туннель запущен. Проверьте вывод ssh для URL."
+  fi
+
+  echo "Готово! Локально: http://127.0.0.1:$FRONT_PORT"
   echo "Тестовый пользователь: test@test.ru / test1234 (admin)"
-  echo "Для остановки: kill $BACKEND_PID $FRONTEND_PID"
+  echo "Для остановки: kill $BACKEND_PID $FRONTEND_PID ${TUNNEL_PID:-}"
 fi
